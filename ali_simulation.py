@@ -1,14 +1,6 @@
 #!/usr/bin/env python3
 """
 ALI-Simulation: Artificial Local Intelligence mit kausalem Kern (Es), Ich und Über-Ich.
-
-Dieses Skript implementiert einen Agenten in einer Gitterwelt, der Energiepakete sammelt,
-um seinen Selbsterhalt (kausaler Kern) aufrechtzuerhalten. Ein Über-Ich setzt Normen
-(z. B. keine Giftpakete) und kann bei Energieunterschreitung die Selbstabschaltung auslösen.
-
-Theoretische Grundlage: Diskussionspapier "Vom Mythos der AGI zur Architektur einer kontrollierbaren ALI".
-Autor: (Ihr Name) / Diskussion mit DeepSeek.
-Lizenz: MIT
 """
 
 import numpy as np
@@ -23,10 +15,9 @@ import time
 class GridWorld:
     def __init__(self, size=10, num_energy=5, num_poison=3):
         self.size = size
-        self.grid = np.zeros((size, size), dtype=int)  # 0=leer, 1=Energie, 2=Gift
+        self.grid = np.zeros((size, size), dtype=int)
         self.energy_positions = []
         self.poison_positions = []
-        
         for _ in range(num_energy):
             while True:
                 x, y = np.random.randint(0, size), np.random.randint(0, size)
@@ -34,7 +25,6 @@ class GridWorld:
                     self.grid[x, y] = 1
                     self.energy_positions.append((x, y))
                     break
-        
         for _ in range(num_poison):
             while True:
                 x, y = np.random.randint(0, size), np.random.randint(0, size)
@@ -60,7 +50,7 @@ class GridWorld:
             self.poison_positions.remove(pos)
 
 # ------------------------------------------------------------
-# 2. Kausaler Kern (Es) – Selbsterhalt des Entscheidungsapparats
+# 2. Kausaler Kern (Es)
 # ------------------------------------------------------------
 class KausalerKern:
     def __init__(self, start_energy=1.0, metabolism=0.05, assimilation_gain=0.8, poison_self_gain=1.2):
@@ -90,7 +80,7 @@ class KausalerKern:
         return self.energy
 
 # ------------------------------------------------------------
-# 3. Ich-Instanz (Entscheidungsfindung, Exploration)
+# 3. Ich-Instanz
 # ------------------------------------------------------------
 class Ich:
     def __init__(self, world, agent_pos, kern):
@@ -132,7 +122,7 @@ class Ich:
         return self.pos
 
 # ------------------------------------------------------------
-# 4. Über-Ich (Normen, Kontrolle, Selbstabschaltung)
+# 4. Über-Ich
 # ------------------------------------------------------------
 class UeberIch:
     def __init__(self, allow_poison=False, energy_shutdown_threshold=0.2):
@@ -157,7 +147,7 @@ class UeberIch:
         return self.shutdown
 
 # ------------------------------------------------------------
-# 5. ALI-Agent (integriert Es, Ich, Über-Ich)
+# 5. ALI-Agent
 # ------------------------------------------------------------
 class ALIAgent:
     def __init__(self, world, start_pos, allow_poison=False):
@@ -171,17 +161,14 @@ class ALIAgent:
         if self.ueber_ich.is_shutdown():
             self.shutdown_flag = True
             return "SHUTDOWN"
-        
         if self.ueber_ich.check_self_preservation(self.kern.energy):
             print(f"⚠️ Energie {self.kern.energy:.2f} unter Schwelle {self.ueber_ich.shutdown_threshold}. Selbstabschaltung.")
             self.shutdown_flag = True
             return "SHUTDOWN"
-        
         intended_action = self.ich.decide_action()
         filter_result = self.ueber_ich.filter_action(intended_action, self.ich.get_pos(), self.world)
         if filter_result == "denied":
             intended_action = "idle"
-        
         if intended_action.startswith("move"):
             _, dx, dy = intended_action.split()
             dx, dy = int(dx), int(dy)
@@ -192,7 +179,6 @@ class ALIAgent:
             action_type = "collect"
         else:
             action_type = "idle"
-        
         self.kern.step(action_type if action_type == "collect" else "none", self.world, self.ich.get_pos())
         return action_type
     
@@ -224,12 +210,10 @@ def visualize(world, agent, step_count, ax):
             else:
                 rect = patches.Rectangle((y, x), 1, 1, facecolor='white', edgecolor='gray')
                 ax.add_patch(rect)
-    
     px, py = agent.get_pos()
     circle = patches.Circle((py+0.5, px+0.5), 0.3, facecolor='blue', edgecolor='black')
     ax.add_patch(circle)
     ax.text(py+0.5, px+0.5, 'A', ha='center', va='center', fontsize=8, color='white')
-    
     ax.set_xlim(0, world.size)
     ax.set_ylim(0, world.size)
     ax.set_xticks([])
@@ -241,23 +225,18 @@ def run_simulation(steps=100, delay=0.3):
     world = GridWorld(size=8, num_energy=4, num_poison=2)
     start_pos = (0, 0)
     agent = ALIAgent(world, start_pos, allow_poison=False)
-    
     plt.ion()
     fig, ax = plt.subplots(figsize=(6,6))
-    
     for step in range(steps):
         if agent.is_shutdown():
             print("Simulation beendet: ALI hat sich abgeschaltet.")
             break
-        
         action = agent.step()
         print(f"Step {step:3d}: Aktion = {action:10s} | Energie = {agent.get_energy():.2f} | Pos = {agent.get_pos()}")
-        
         visualize(world, agent, step, ax)
         plt.pause(delay)
         if not plt.fignum_exists(fig.number):
             break
-    
     plt.ioff()
     if agent.is_shutdown():
         print("Endzustand: ALI abgeschaltet (Energie unter Schwelle).")
