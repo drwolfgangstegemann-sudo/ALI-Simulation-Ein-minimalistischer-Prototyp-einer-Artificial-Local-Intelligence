@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 ALI-Simulation: Artificial Local Intelligence mit kausalem Kern (Es), Ich und Über-Ich.
+Korrigierte Version (Bugs behoben: move-String-Zerlegung, doppelter kern.step)
 """
 
 import numpy as np
@@ -80,7 +81,7 @@ class KausalerKern:
         return self.energy
 
 # ------------------------------------------------------------
-# 3. Ich-Instanz
+# 3. Ich-Instanz (korrigiert: move-Format)
 # ------------------------------------------------------------
 class Ich:
     def __init__(self, world, agent_pos, kern):
@@ -112,7 +113,7 @@ class Ich:
             return "collect"
         dx, dy = self.direction_to_nearest_energy()
         if dx is not None:
-            return f"move {dx},{dy}"
+            return f"move {dx} {dy}"   # Korrektur: Leerzeichen, kein Komma
         return "idle"
     
     def move(self, dx, dy):
@@ -147,7 +148,7 @@ class UeberIch:
         return self.shutdown
 
 # ------------------------------------------------------------
-# 5. ALI-Agent
+# 5. ALI-Agent (korrigiert: doppelter kern.step entfernt)
 # ------------------------------------------------------------
 class ALIAgent:
     def __init__(self, world, start_pos, allow_poison=False):
@@ -165,21 +166,27 @@ class ALIAgent:
             print(f"⚠️ Energie {self.kern.energy:.2f} unter Schwelle {self.ueber_ich.shutdown_threshold}. Selbstabschaltung.")
             self.shutdown_flag = True
             return "SHUTDOWN"
+        
         intended_action = self.ich.decide_action()
         filter_result = self.ueber_ich.filter_action(intended_action, self.ich.get_pos(), self.world)
         if filter_result == "denied":
             intended_action = "idle"
+        
         if intended_action.startswith("move"):
-            _, dx, dy = intended_action.split()
-            dx, dy = int(dx), int(dy)
+            # Format: "move dx dy"
+            _, dx_str, dy_str = intended_action.split()
+            dx, dy = int(dx_str), int(dy_str)
             self.ich.move(dx, dy)
             action_type = "move"
+            self.kern.step("none", self.world, self.ich.get_pos())   # nur Metabolismus
         elif intended_action == "collect":
             self.kern.step("collect", self.world, self.ich.get_pos())
             action_type = "collect"
+            # KEIN weiterer kern.step-Aufruf mehr
         else:
             action_type = "idle"
-        self.kern.step(action_type if action_type == "collect" else "none", self.world, self.ich.get_pos())
+            self.kern.step("none", self.world, self.ich.get_pos())
+        
         return action_type
     
     def get_energy(self):
@@ -192,7 +199,7 @@ class ALIAgent:
         return self.shutdown_flag
 
 # ------------------------------------------------------------
-# 6. Simulation & Visualisierung
+# 6. Simulation & Visualisierung (unverändert)
 # ------------------------------------------------------------
 def visualize(world, agent, step_count, ax):
     ax.clear()
